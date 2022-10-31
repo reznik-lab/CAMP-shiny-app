@@ -1,2 +1,1 @@
-# cAMP-shiny-app
-cAMP data portal shiny version
+# mmm-shiny-app
