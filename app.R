@@ -24,8 +24,8 @@ source("R/tab3_multimodal_correlation_plot.R")
 
 
 ##### Load dataset #####
+#masterData<-fread("data/MasterMapping_MetImmune_03_16_2022_revised_dataset_name.csv")
 masterData<-fread("data/MasterMapping_MetImmune_03_16_2022.csv")
-
 
 
 cancerTypeList<-c("RC20","RC18MR","RC18Flow","RC12",
@@ -43,14 +43,7 @@ cancerTypeWithNormalList<-c("RC20","RC18MR",
                   "GBM","PDAC",
                   "COAD")
 
-locations <- data.frame(City=c("Ames", "Beaumont", "Beaumont", "Portland", "Portland"),
-                        State=c("IA", "CA", "TX", "ME", "OR"),
-                        value=c("10010", "20020", "30030", "40040", "50050"))
-
-locations$label = paste(locations$City, locations$State, sep=", ")
-
-
-immuneOptions<-data.frame(value=c("ImmuneScore","TIS","PD1"))
+#immuneOptions<-data.frame(value=c("ImmuneScore","TIS","PD1"))
 
 #testOptions<-c("ImmuneScore","TIS","PD1")
 #names(testOptions)<-c("ImmuneScore","TIS","PD1")
@@ -87,9 +80,64 @@ ui <- navbarPage(
   
   theme=shinytheme("flatly"),
   
-  ### Start of navbar - Browse tab ###
+  ##### Start of navbar - Home tab ###
   
-  tabPanel("Browse",
+  tabPanel("Home",
+           
+      fluidPage(
+        fluidRow(
+          
+          column(8,
+                 
+                 HTML("
+                                     
+                       <section class='banner'>
+                       <h2><strong>Introduction</strong></h2>
+                       <p>
+                       The Cancer Atlas of Metabolic Profiles (cAMP) is a curated collection of
+                       matched metabolomic and transcriptomic data from public and in-house studies.
+                       Data in this collection has been harmonized for integrative, 
+                       cross-study analysis. Currently, the cAMP dataset comprises the largest 
+                       harmonized collection of multimodal matched metabolic and transcriptomic data on primary tumor specimens.
+                       </p>
+                       </section>
+                       
+                       <br>
+                       <section class='tab3_section'>
+                       <h4><strong>Data overview</strong></h4>
+                       <p>
+                       We have curated a collection of matched metabolomic and 
+                       transcriptomic data from 988 specimens in 11 cancer
+                       types across 15 independently collected studies. Seven out of 15 studies also
+                       include data of tumor and matched normal samples.
+                       </p>
+                       </section>
+                       
+                       <br>
+                       
+                       <section class='tab3_section'>
+                       <h4><strong>Multimodal correlation</strong></h4>
+                       <p>
+                       In this tab, cAMP produces scatter plots from selected metabolite, 
+                       gene or TME signature attributes for users to explore the multimodal correlation.      
+                       </p>
+                       </section>
+                       
+                       
+                       
+                ") # end of HTML()
+                  
+          ) # end of column()
+          
+        ) # end of fluidRow
+      ) # end of fluidPage()     
+           
+  ), ### End of navbar - Browse tab ###
+  
+  
+  ### Start of navbar - Data Overview tab ###
+  
+  tabPanel("Data overview",
            
      fluidPage(
        # Application title
@@ -134,7 +182,7 @@ ui <- navbarPage(
   tabPanel("Multimodal correlation",
            fluidPage(
              # Application title
-             #titlePanel("Hello Shiny!"),
+             #titlePanel("black: tumor samples, blue: normal samples"),
              
              sidebarLayout(
                
@@ -203,7 +251,11 @@ ui <- navbarPage(
                
                # Show a plot of the generated distribution
                mainPanel(
-                 "Multimodal correlation",
+                 #"Multimodal correlation",
+                 
+                 fluidRow(HTML("<h4>Multimoal correlation</h4>
+                          <p>black: tumor samples, &nbsp
+                          blue: normal samples</p>")),
                  
                  fluidRow(
                    
@@ -219,7 +271,7 @@ ui <- navbarPage(
                  br(),
                  br(),
                  
-                 DT::dataTableOutput("tab3_dataSummaryTable")
+                 DT::dataTableOutput("tab3_dataSummaryTable") %>% withSpinner(color="#0dc5c1")
                  
                  #fluidRow(
                  #
@@ -249,14 +301,14 @@ ui <- navbarPage(
            ) # end of fluid page 
            
     
-  ), # end of tab panel 3
+  ) # end of tab panel 3
   
   
   ##### End of navbar - Correlation tab ###
   
   #tabPanel("In silico metabolomics"),
-  tabPanel("Documentation"),
-  tabPanel("About")
+  #tabPanel("Documentation"),
+  #tabPanel("About")
 )
 
 server <- function(input, output, session) {
@@ -386,11 +438,19 @@ server <- function(input, output, session) {
     
     getPlotData<-function(selected_cancerType,dataClass,var1,var2,var1_content,var2_content){
       
-      
-      
       picked_metabolite<-NA
       picked_gene<-NA
       picked_immune_signature<-NA
+      
+      picked_metabolite_var1<-NA
+      picked_metabolite_var2<-NA
+      
+      picked_gene_var1<-NA
+      picked_gene_var2<-NA
+      
+      picked_immune_signature_var1<-NA
+      picked_immune_signature_var2<-NA
+      
       
       if(var1 == "metabolite"){
          picked_metabolite<-var1_content
@@ -416,6 +476,27 @@ server <- function(input, output, session) {
         picked_immune_signature<-var2_content
       }
       
+      if( var1 == "metabolite" &&  var2 == "metabolite" ){
+        
+        picked_metabolite_var1<-var1_content
+        picked_metabolite_var2<-var2_content
+        
+      }
+      
+      if( var1 == "gene" &&  var2 == "gene" ){
+        
+        picked_gene_var1<-var1_content
+        picked_gene_var2<-var2_content
+        
+      }
+      
+      if( var1 == "tme_signature" &&  var2 == "tme_signature" ){
+        
+        picked_immune_signature_var1<-var1_content
+        picked_immune_signature_var2<-var2_content
+        
+      }
+      
       ###
       
       log2_metabolite_abundance<-load_metabolite_data(selected_cancerType,dataClass)
@@ -437,15 +518,15 @@ server <- function(input, output, session) {
         {
             plotData<-data.frame("cancer_type"=selected_cancerType,
                              "sampleId" = common_sample_id,     
-                             "metabolite"=log2_metabolite_abundance[picked_metabolite,common_sample_id],
-                             "gene"=expressionData[picked_gene,common_sample_id],
+                             "var1"=log2_metabolite_abundance[picked_metabolite,common_sample_id],
+                             "var2"=expressionData[picked_gene,common_sample_id],
                              stringsAsFactors = FALSE)
         }else{
           
             plotData<-data.frame("cancer_type"=selected_cancerType,
                                  "sampleId" = common_sample_id, 
-                               "metabolite"=NA,
-                               "gene"=NA,
+                               "var1"=NA,
+                               "var2"=NA,
                                stringsAsFactors = FALSE)
           
         }   
@@ -464,16 +545,16 @@ server <- function(input, output, session) {
         
           plotData<-data.frame("cancer_type"=selected_cancerType,
                                "sampleId" = common_sample_id, 
-                             "metabolite"=log2_metabolite_abundance[picked_metabolite,common_sample_id],
-                             "tme_signature"=immune_signature[picked_immune_signature,common_sample_id],
+                             "var1"=log2_metabolite_abundance[picked_metabolite,common_sample_id],
+                             "var2"=immune_signature[picked_immune_signature,common_sample_id],
                              stringsAsFactors = FALSE)
         
         }else{
           
           plotData<-data.frame("cancer_type"=selected_cancerType,
                                "sampleId" = common_sample_id, 
-                               "metabolite"=NA,
-                               "tme_signature"=NA,
+                               "var1"=NA,
+                               "var2"=NA,
                                stringsAsFactors = FALSE)
           
         }
@@ -490,21 +571,111 @@ server <- function(input, output, session) {
         {
             plotData<-data.frame("cancer_type"=selected_cancerType,
                                  "sampleId" = common_sample_id, 
-                             "gene"=expressionData[picked_gene,common_sample_id],
-                             "tme_signature"=immune_signature[picked_immune_signature,common_sample_id],
+                             "var1"=expressionData[picked_gene,common_sample_id],
+                             "var2"=immune_signature[picked_immune_signature,common_sample_id],
                              stringsAsFactors = FALSE)
         }else{
           
             plotData<-data.frame("cancer_type"=selected_cancerType,
                                  "sampleId" = common_sample_id, 
-                                 "gene"=NA,
-                                 "tme_signature"=NA,
+                                 "var1"=NA,
+                                 "var2"=NA,
                                  stringsAsFactors = FALSE)
           
         }
         
         
       }
+      
+      #####
+      # placeholder for same data modalities 
+      #####
+      
+      if( (var1 %in% c("metabolite") ) && (var2 %in% c("metabolite")) ){
+        
+        #message(sprintf("enter this loop"))
+        common_sample_id<-intersect(colnames(log2_metabolite_abundance),colnames(log2_metabolite_abundance))
+        
+        
+        if( ( picked_metabolite_var1 %in% rownames(log2_metabolite_abundance) ) & (picked_metabolite_var2 %in% rownames(log2_metabolite_abundance)) )
+        {
+          
+          plotData<-data.frame("cancer_type"=selected_cancerType,
+                               "sampleId" = common_sample_id, 
+                               "var1"=log2_metabolite_abundance[picked_metabolite_var1,common_sample_id],
+                               "var2"=log2_metabolite_abundance[picked_metabolite_var2,common_sample_id],
+                               stringsAsFactors = FALSE)
+          
+        }else{
+          
+          plotData<-data.frame("cancer_type"=selected_cancerType,
+                               "sampleId" = common_sample_id, 
+                               "var1"=NA,
+                               "var2"=NA,
+                               stringsAsFactors = FALSE)
+          
+        }
+        
+      } # end of metabolite - metabolite
+      
+      if( (var1 %in% c("gene") ) && (var2 %in% c("gene")) ){
+        
+        #message(sprintf("enter this loop"))
+        common_sample_id<-intersect(colnames(expressionData),colnames(expressionData))
+        
+        
+        if( ( picked_gene_var1 %in% rownames(expressionData) ) & (picked_gene_var2 %in% rownames(expressionData)) )
+        {
+          
+          plotData<-data.frame("cancer_type"=selected_cancerType,
+                               "sampleId" = common_sample_id, 
+                               "var1"=expressionData[picked_gene_var1,common_sample_id],
+                               "var2"=expressionData[picked_gene_var2,common_sample_id],
+                               stringsAsFactors = FALSE)
+          
+        }else{
+          
+          plotData<-data.frame("cancer_type"=selected_cancerType,
+                               "sampleId" = common_sample_id, 
+                               "var1"=NA,
+                               "var2"=NA,
+                               stringsAsFactors = FALSE)
+          
+        }
+        
+      } # end of gene - gene
+      
+      if( (var1 %in% c("tme_signature") ) && (var2 %in% c("tme_signature")) ){
+        
+        #message(sprintf("enter this loop"))
+        common_sample_id<-intersect(colnames(immune_signature),colnames(immune_signature))
+        
+        
+        if( ( picked_immune_signature_var1 %in% rownames(immune_signature) ) & (picked_immune_signature_var2 %in% rownames(immune_signature)) )
+        {
+          
+          plotData<-data.frame("cancer_type"=selected_cancerType,
+                               "sampleId" = common_sample_id, 
+                               "var1"=immune_signature[picked_immune_signature_var1,common_sample_id],
+                               "var2"=immune_signature[picked_immune_signature_var2,common_sample_id],
+                               stringsAsFactors = FALSE)
+          
+        }else{
+          
+          plotData<-data.frame("cancer_type"=selected_cancerType,
+                               "sampleId" = common_sample_id, 
+                               "var1"=NA,
+                               "var2"=NA,
+                               stringsAsFactors = FALSE)
+          
+        }
+        
+      } # end of metabolite - metabolite
+      
+      ######
+      # end of same data modalities
+      ######
+      
       
       #colnames(plotData)<-c("cancer_type",var1,var2)
       
@@ -721,10 +892,11 @@ server <- function(input, output, session) {
       cancerTypeList<-unique(data$plotData$cancer_type)
       num_cancerType<-length(cancerTypeList)
       
+      #xVar<-input$tab3_select_var1
+      #yVar<-input$tab3_select_var2
       
-      
-      xVar<-input$tab3_select_var1
-      yVar<-input$tab3_select_var2
+      xVar<-"var1"
+      yVar<-"var2"
         
       xVar_content<-input$tab3_var1_content
       yVar_content<-input$tab3_var2_content  
@@ -780,9 +952,26 @@ server <- function(input, output, session) {
   output$tab3_dataSummaryTable<-DT::renderDataTable(DT::datatable({
     
     data<-load_plotData()
-    data$plotData
+    tableContent<-data$plotData
     
-  }))  
+    tableContent$var1<-round(tableContent$var1,3)
+    tableContent$var2<-round(tableContent$var2,3)
+    
+    colnames(tableContent)<-c("cancerType",
+                              "sampleID",
+                              input$tab3_select_var1,
+                              input$tab3_select_var2,
+                              "sampleType")
+    
+    return(tableContent)
+    
+  }, options=list(
+             columnDefs = list(list(className = 'dt-center', targets = "_all"),
+                               list(target=10, visible=FALSE)),
+             pageLength=10,
+             lengthMenu=c(10,15,20,25)
+             )
+  ))  
   
   
   ##### end tab3 #####
